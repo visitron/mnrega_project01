@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>मनरेगा पोर्टल - स्वागत</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #F5E6CA; color:#222; font-size:1.05rem; }
+        .auth-container { max-width:520px; margin:60px auto; padding:24px; background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+        .brand { text-align:center; margin-bottom:18px; color:#FF8C32 }
+        .form-container { display:none; }
+        .form-container.active { display:block; }
+        .visual-aid { width:22px; vertical-align:middle; margin-right:8px }
+        .help-btn { background:#06A77D; color:#fff; border-radius:999px; padding:6px 10px }
+        .error-message { color:#D32F2F; background:#FFEBEE; padding:10px; border-radius:8px; display:none }
+    </style>
+</head>
+<body>
+    <select id="pageLang" class="form-select form-select-sm" style="width:110px; position:fixed; top:14px; right:14px; z-index:1000;" onchange="switchLanguage()">
+        <option value="hi">हिंदी</option>
+        <option value="en">English</option>
+    </select>
+
+    <div class="auth-container">
+        <div class="brand">
+            <img src="https://cdn-icons-png.flaticon.com/512/2534/2534814.png" alt="logo" style="width:72px;">
+            <h2><span class="hi">मनरेगा पोर्टल</span><span class="en" style="display:none;">MGNREGA Portal</span></h2>
+            <p class="text-muted"><span class="hi">ग्रामीण विकास डेटा देखें</span><span class="en" style="display:none;">Access MGNREGA data</span></p>
+        </div>
+
+        <div id="loginForm" class="form-container active">
+            <h4><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/1828/1828395.png" alt="login"> <span class="hi">लॉगिन</span><span class="en" style="display:none;">Login</span></h4>
+            <form onsubmit="handleLogin(event)">
+                <div class="mb-3">
+                    <label for="loginEmail" class="form-label"><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/542/542638.png" alt="email"> <span class="hi">ईमेल</span><span class="en" style="display:none;">Email</span></label>
+                    <input type="email" class="form-control form-control-lg" id="loginEmail" required aria-label="email">
+                </div>
+                <div class="mb-3">
+                    <label for="loginPassword" class="form-label"><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/1680/1680072.png" alt="password"> <span class="hi">पासवर्ड</span><span class="en" style="display:none;">Password</span></label>
+                    <input type="password" class="form-control form-control-lg" id="loginPassword" required aria-label="password">
+                </div>
+                <div id="loginError" class="error-message"></div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn" style="background:#FF8C32;color:#fff;padding:12px;border-radius:10px;">
+                        <span class="hi">लॉगिन करें</span><span class="en" style="display:none;">Login</span>
+                    </button>
+                </div>
+                <div class="text-center mt-3">
+                    <span class="hi">खाता नहीं है?</span><span class="en" style="display:none;">Don't have an account?</span>
+                    <a href="#" onclick="toggleForms()"><span class="hi">यहाँ रजिस्टर करें</span><span class="en" style="display:none;">Register here</span></a>
+                </div>
+            </form>
+        </div>
+
+        <div id="registerForm" class="form-container">
+            <h4><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/2910/2910756.png" alt="register"> <span class="hi">रजिस्टर</span><span class="en" style="display:none;">Register</span></h4>
+            <form onsubmit="handleRegister(event)">
+                <div class="mb-3">
+                    <label for="registerName" class="form-label"><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="name"> <span class="hi">नाम</span><span class="en" style="display:none;">Name</span></label>
+                    <input type="text" class="form-control form-control-lg" id="registerName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="registerEmail" class="form-label"><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/542/542638.png" alt="email"> <span class="hi">ईमेल</span><span class="en" style="display:none;">Email</span></label>
+                    <input type="email" class="form-control form-control-lg" id="registerEmail" required>
+                </div>
+                <div class="mb-3">
+                    <label for="registerPassword" class="form-label"><img class="visual-aid" src="https://cdn-icons-png.flaticon.com/512/1680/1680072.png" alt="password"> <span class="hi">पासवर्ड</span><span class="en" style="display:none;">Password</span></label>
+                    <input type="password" class="form-control form-control-lg" id="registerPassword" required>
+                </div>
+                <div id="registerError" class="error-message"></div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn" style="background:#06A77D;color:#fff;padding:12px;border-radius:10px;"> <span class="hi">रजिस्टर करें</span><span class="en" style="display:none;">Register</span></button>
+                </div>
+                <div class="text-center mt-3">
+                    <span class="hi">पहले से खाता है?</span><span class="en" style="display:none;">Already have an account?</span>
+                    <a href="#" onclick="toggleForms()"><span class="hi">यहाँ लॉगिन करें</span><span class="en" style="display:none;">Login here</span></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleForms() { document.getElementById('loginForm').classList.toggle('active'); document.getElementById('registerForm').classList.toggle('active'); }
+
+        function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; setTimeout(()=>el.style.display='none',5000); }
+
+        async function handleLogin(e){ e.preventDefault(); try{ const res = await fetch('/auth/login',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email:document.getElementById('loginEmail').value, password:document.getElementById('loginPassword').value }) }); const j = await res.json(); if(res.ok){ localStorage.setItem('token', j.token); localStorage.setItem('user', JSON.stringify(j.user)); localStorage.setItem('language', document.getElementById('pageLang').value); window.location.href='/dashboard.html'; } else { const lang = document.getElementById('pageLang').value; showError('loginError', lang==='en'? (j.error||'Login failed') : (j.error||'लॉगिन असफल')); } }catch(err){ showError('loginError', document.getElementById('pageLang').value==='en'? 'Error during login':'लॉगिन में त्रुटि'); } }
+
+        async function handleRegister(e){ e.preventDefault(); try{ const res = await fetch('/auth/register',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:document.getElementById('registerName').value, email:document.getElementById('registerEmail').value, password:document.getElementById('registerPassword').value }) }); const j = await res.json(); if(res.ok){ localStorage.setItem('token', j.token); localStorage.setItem('user', JSON.stringify(j.user)); localStorage.setItem('language', document.getElementById('pageLang').value); window.location.href='/dashboard.html'; } else { const lang = document.getElementById('pageLang').value; showError('registerError', lang==='en'? (j.error||'Registration failed') : (j.error||'रजिस्टर असफल')); } }catch(err){ showError('registerError', document.getElementById('pageLang').value==='en'? 'Error during registration':'पंजीकरण में त्रुटि'); } }
+
+        // Language & TTS helpers
+        function switchLanguage(){ const lang = document.getElementById('pageLang').value; localStorage.setItem('language', lang); document.querySelectorAll('.hi').forEach(el=>el.style.display = lang==='hi'? '':'none'); document.querySelectorAll('.en').forEach(el=>el.style.display = lang==='en'? '':'none'); }
+
+        function speak(msg, lang){ const u = new SpeechSynthesisUtterance(msg); u.lang = (lang==='en')? 'en-US':'hi-IN'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+
+        // Init
+        (function(){ const saved = localStorage.getItem('language') || 'hi'; document.getElementById('pageLang').value = saved; switchLanguage(); if(localStorage.getItem('token')) { window.location.href = '/dashboard.html'; } })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="hi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>लॉगिन / रजिस्टर</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body { background:#F5E6CA; color:#222; }
+      .container { max-width:980px; }
+      .visual { width:20px; vertical-align:middle; margin-right:6px }
+      .help-btn { background:#06A77D; color:#fff; padding:6px 10px; border-radius:999px }
+      .msg { padding:8px; border-radius:8px; display:none }
+    </style>
+  </head>
+  <body>
+    <select id="langSel" class="form-select form-select-sm" style="width:120px; position:fixed; right:14px; top:12px; z-index:1000" onchange="setLang()">
+      <option value="hi">हिंदी</option>
+      <option value="en">English</option>
+    </select>
+
+    <div class="container py-4">
+      <div class="row">
+        <div class="col-md-6">
+          <h4><img class="visual" src="https://cdn-icons-png.flaticon.com/512/2910/2910756.png" alt="reg"> <span class="hi">रजिस्टर</span><span class="en" style="display:none">Register</span></h4>
+          <form id="registerForm">
+            <div class="mb-2"><input id="regName" class="form-control form-control-lg" placeholder="" aria-label="name" /></div>
+            <div class="mb-2"><input id="regEmail" class="form-control form-control-lg" placeholder="" type="email" required aria-label="email" /></div>
+            <div class="mb-2"><input id="regPass" class="form-control form-control-lg" placeholder="" type="password" required aria-label="password" /></div>
+            <div class="d-grid"><button class="btn" style="background:#06A77D;color:#fff;padding:10px;border-radius:10px"> <span class="hi">रजिस्टर</span><span class="en" style="display:none">Register</span></button></div>
+          </form>
+          <div id="regMsg" class="mt-2 msg"></div>
+        </div>
+        <div class="col-md-6">
+          <h4><img class="visual" src="https://cdn-icons-png.flaticon.com/512/1828/1828395.png" alt="login"> <span class="hi">लॉगिन</span><span class="en" style="display:none">Login</span></h4>
+          <form id="loginForm">
+            <div class="mb-2"><input id="loginEmail" class="form-control form-control-lg" placeholder="" type="email" required aria-label="email" /></div>
+            <div class="mb-2"><input id="loginPass" class="form-control form-control-lg" placeholder="" type="password" required aria-label="password" /></div>
+            <div class="d-grid"><button class="btn" style="background:#FF8C32;color:#fff;padding:10px;border-radius:10px"> <span class="hi">लॉगिन</span><span class="en" style="display:none">Login</span></button></div>
+          </form>
+          <div id="loginMsg" class="mt-2 msg"></div>
+        </div>
+      </div>
+
+      <hr />
+      <div>
+        <h5><span class="hi">सत्र</span><span class="en" style="display:none">Session</span></h5>
+        <div id="sessionArea">
+          <button id="whoamiBtn" class="btn btn-outline-secondary"> <span class="hi">मैं कौन हूँ?</span><span class="en" style="display:none">Who am I?</span></button>
+          <button id="logoutBtn" class="btn btn-outline-danger ms-2"> <span class="hi">लॉगआउट</span><span class="en" style="display:none">Logout</span></button>
+          <pre id="me" class="mt-2"></pre>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      function setLang(){ const l = document.getElementById('langSel').value; localStorage.setItem('language', l); document.querySelectorAll('.hi').forEach(el=>el.style.display = l==='hi'? '':'none'); document.querySelectorAll('.en').forEach(el=>el.style.display = l==='en'? '':'none'); }
+
+      function showMsg(elId, msg, isError){ const el = document.getElementById(elId); el.textContent = msg; el.style.display='block'; el.style.color = isError? 'red':'green'; setTimeout(()=>el.style.display='none',4000); }
+
+      document.getElementById('registerForm').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const name = document.getElementById('regName').value; const email = document.getElementById('regEmail').value; const password = document.getElementById('regPass').value;
+        try{ const res = await fetch('/auth/register',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, email, password }) }); const j = await res.json(); if(res.ok){ localStorage.setItem('token', j.token); showMsg('regMsg', (localStorage.getItem('language')==='en')? 'Registered and logged in':'रजिस्टर और लॉगिन हुआ'); } else showMsg('regMsg', j.error || ((localStorage.getItem('language')==='en')? 'Registration failed':'रजिस्टर असफल'), true); }catch(err){ showMsg('regMsg', (localStorage.getItem('language')==='en')? 'Error registering':'रजिस्टर में त्रुटि', true); }
+      });
+
+      document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPass').value;
+        try{ const res = await fetch('/auth/login',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email, password }) }); const j = await res.json(); if(res.ok){ localStorage.setItem('token', j.token); showMsg('loginMsg', (localStorage.getItem('language')==='en')? 'Logged in':'लॉगिन हुआ'); } else showMsg('loginMsg', j.error || ((localStorage.getItem('language')==='en')? 'Login failed':'लॉगिन असफल'), true); }catch(err){ showMsg('loginMsg', (localStorage.getItem('language')==='en')? 'Error during login':'लॉगिन में त्रुटि', true); }
+      });
+
+      document.getElementById('whoamiBtn').addEventListener('click', async ()=>{
+        const token = localStorage.getItem('token'); const meEl = document.getElementById('me'); if(!token){ meEl.textContent = (localStorage.getItem('language')==='en')? 'Not logged in':'लॉगिन नहीं है'; return; }
+        const res = await fetch('/auth/me', { headers: { Authorization: 'Bearer ' + token } }); if(!res.ok){ meEl.textContent = (localStorage.getItem('language')==='en')? 'Session invalid':'सत्र अमान्य'; return; } const j = await res.json(); meEl.textContent = JSON.stringify(j.user, null, 2);
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('token'); document.getElementById('me').textContent=''; showMsg('loginMsg', (localStorage.getItem('language')==='en')? 'Logged out':'लॉगआउट हुआ'); });
+
+      // init language
+      (function(){ const saved = localStorage.getItem('language') || 'hi'; document.getElementById('langSel').value = saved; setLang(); })();
+    </script>
+  </body>
+</html>

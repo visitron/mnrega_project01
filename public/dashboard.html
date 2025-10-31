@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Data Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF8C32; /* warm orange */
+            --accent: #06A77D;  /* green */
+            --muted: #6b6b6b;
+        }
+
+        body {
+            background: #F5E6CA;
+            color: #222;
+            font-size: 1.05rem;
+        }
+
+        .nav-link.active {
+            background-color: rgba(0,0,0,0.08);
+            border-radius: 6px;
+        }
+
+        /* Larger, touch-friendly search area */
+        #searchForm {
+            max-width: 980px;
+            margin: 18px auto;
+            border-radius: 12px;
+        }
+
+        /* Summary cards for easy scanning */
+        .summary-card {
+            border-radius: 12px;
+            padding: 18px;
+            color: #fff;
+            min-height: 96px;
+        }
+
+        .summary-label { font-weight: 700; font-size: 1.05rem; }
+        .summary-value { font-size: 1.4rem; margin-top: 6px; }
+
+        #historyTable { max-width: 1200px; margin: 20px auto; }
+        .history-date { font-size: 0.95em; color: var(--muted); }
+
+        /* Help button */
+        .help-btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 8px 12px; }
+
+        /* Large action buttons */
+        .big-btn { font-size: 1.05rem; padding: 10px 16px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: var(--primary);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">मनरेगा पोर्टल</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="searchTab" onclick="showTab('search')">Search</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="historyTab" onclick="showTab('history')">History</a>
+                    </li>
+                </ul>
+                <span class="navbar-text me-3" id="userInfo"></span>
+                <select id="langSelect" class="form-select form-select-sm me-2" style="width:110px;" onchange="switchLanguage()">
+                    <option value="hi">हिंदी</option>
+                    <option value="en">English</option>
+                </select>
+                <button class="btn btn-outline-light" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div id="searchSection">
+            <form id="searchForm" class="card p-4" aria-label="Search form">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="state" class="form-label">
+                            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="state" style="width:20px;vertical-align:middle;margin-right:6px;"> 
+                            <span class="hi">राज्य</span>
+                            <span class="en" style="display:none;">State</span>
+                        </label>
+                        <select class="form-select form-select-lg" id="state" required aria-required="true">
+                            <option value="">—</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="district" class="form-label">
+                            <img src="https://cdn-icons-png.flaticon.com/512/149/149060.png" alt="district" style="width:20px;vertical-align:middle;margin-right:6px;"> 
+                            <span class="hi">जिला</span>
+                            <span class="en" style="display:none;">District</span>
+                        </label>
+                        <select class="form-select form-select-lg" id="district">
+                            <option value="">—</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <label class="form-label d-block">
+                            <span class="hi">वर्ष</span>
+                            <span class="en" style="display:none;">Year</span>
+                        </label>
+                        <select class="form-select form-select-lg d-inline-block" id="year" style="width:60%;">
+                            <option value="2024-2025">2024-25</option>
+                            <option value="2023-2024">2023-24</option>
+                            <option value="2022-2023">2022-23</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-4">
+                        <label class="form-label hi">सीमित परिणाम</label>
+                        <label class="form-label en" style="display:none;">Limit</label>
+                        <input type="number" class="form-control form-control-lg" id="limit" value="10" min="1" max="100">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label hi">शुरू करें (ऑफ़सेट)</label>
+                        <label class="form-label en" style="display:none;">Offset</label>
+                        <input type="number" class="form-control form-control-lg" id="offset" value="0" min="0">
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <button type="submit" class="btn" style="background:var(--primary);color:#fff;" aria-label="Search">
+                            <img src="https://cdn-icons-png.flaticon.com/512/622/622669.png" style="width:22px;vertical-align:middle;margin-right:8px;"> 
+                            <span class="hi">खोजें</span>
+                            <span class="en" style="display:none;">Search</span>
+                        </button>
+                        <button type="button" class="btn ms-2 big-btn" onclick="speakHelp()">🔊 <span class="hi">सुनें</span><span class="en" style="display:none;">Listen</span></button>
+                    </div>
+                </div>
+            </form>
+
+            <div id="loading" class="text-center mt-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <div id="results" class="mt-4" aria-live="polite"></div>
+        </div>
+
+        <div id="historySection" style="display: none;">
+            <div id="historyTable"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        // Display user info
+        document.getElementById('userInfo').textContent = `Welcome, ${user.name || user.email}`;
+
+        // Load states when page loads
+        async function loadStates() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const response = await fetch('/api/states');
+                const data = await response.json();
+                if (data.states) {
+                    const stateSelect = document.getElementById('state');
+                    stateSelect.innerHTML = '<option value="">Select State</option>' +
+                        data.states.map(state => `<option value="${state}">${state}</option>`).join('');
+                }
+            } catch (err) {
+                console.error('Error loading states:', err);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Load states on page load
+        loadStates();
+
+        // Handle state selection change
+        document.getElementById('state').addEventListener('change', async function() {
+            const state = this.value;
+            const districtSelect = document.getElementById('district');
+            districtSelect.innerHTML = '<option value="">All Districts</option>';
+            
+            if (!state) return;
+
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/districts/${encodeURIComponent(state)}`);
+                const data = await response.json();
+                
+                if (data.districts && data.districts.length > 0) {
+                    districtSelect.innerHTML = '<option value="">All Districts</option>' +
+                        data.districts.map(district => `<option value="${district}">${district}</option>`).join('');
+                }
+            } catch (err) {
+                console.error('Error fetching districts:', err);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function populateDistricts(districts) {
+            const districtSelect = document.getElementById('district');
+            districtSelect.innerHTML = '<option value="">All Districts</option>' +
+                districts.map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+
+        // Tab handling
+        function showTab(tab) {
+            document.getElementById('searchSection').style.display = tab === 'search' ? 'block' : 'none';
+            document.getElementById('historySection').style.display = tab === 'history' ? 'block' : 'none';
+            document.getElementById('searchTab').classList.toggle('active', tab === 'search');
+            document.getElementById('historyTab').classList.toggle('active', tab === 'history');
+            if (tab === 'history') {
+                loadHistory();
+            }
+        }
+
+        // Form handling
+        document.getElementById('searchForm').onsubmit = async (e) => {
+            e.preventDefault();
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const state = document.getElementById('state').value;
+                const district = document.getElementById('district').value;
+                const year = document.getElementById('year').value;
+                const limit = document.getElementById('limit').value;
+                const offset = document.getElementById('offset').value;
+
+                // Format parameters as expected by the API
+                const searchParamsFormatted = {
+                    offset: parseInt(offset) || 0,
+                    limit: parseInt(limit) || 10,
+                    state_name: state.toUpperCase(),
+                    fin_year: year,
+                    filters: {
+                        state_name: state.toUpperCase(),
+                        fin_year: year
+                    }
+                };
+
+                console.log('Sending search params:', searchParamsFormatted);
+
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(searchParamsFormatted)
+                });
+                
+                const data = await response.json();
+                
+                // Filter by district if selected
+                if (district && data.records) {
+                    data.records = data.records.filter(r => r.district_name === district);
+                    data.count = data.records.length;
+                }
+                
+                displayResults(data);
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                alert('Error fetching data');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        };
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+                    if (data.records && data.records.length > 0) {
+                // Create a summary section
+                const totalRecords = data.records.length;
+                const totalExp = data.records.reduce((sum, r) => sum + (parseFloat(r.Total_Exp) || 0), 0);
+                const totalWages = data.records.reduce((sum, r) => sum + (parseFloat(r.Wages) || 0), 0);
+                const totalHouseholds = data.records.reduce((sum, r) => sum + (parseInt(r.Total_Households_Worked) || 0), 0);
+                const avgWageRate = data.records.reduce((sum, r) => sum + (parseFloat(r.Average_Wage_rate_per_day_per_person) || 0), 0) / totalRecords;
+                    const summaryHTML = `
+                        <div class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <div class="summary-card" style="background: var(--primary);">
+                                        <div class="summary-label"><span class="hi">जिलों की संख्या</span><span class="en" style="display:none;">Districts</span></div>
+                                        <div class="summary-value">${totalRecords}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card" style="background: #0B6B4F;">
+                                        <div class="summary-label"><span class="hi">कुल खर्च</span><span class="en" style="display:none;">Total Expenditure</span></div>
+                                        <div class="summary-value">₹${totalExp.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card" style="background: #3B82F6;">
+                                        <div class="summary-label"><span class="hi">घरेलू परिवार</span><span class="en" style="display:none;">Households</span></div>
+                                        <div class="summary-value">${totalHouseholds.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card" style="background: #9B59B6;">
+                                        <div class="summary-label"><span class="hi">औसत मजदूरी/दिन</span><span class="en" style="display:none;">Avg Wage/Day</span></div>
+                                        <div class="summary-value">₹${avgWageRate.toFixed(2)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                // Create the results table
+                const table = document.createElement('table');
+                table.className = 'table table-striped table-bordered table-hover';
+                
+                // Define specific headers we want to show
+                const displayHeaders = [
+                    'month',
+                    'district_name',
+                    'Approved_Labour_Budget',
+                    'Average_Wage_rate_per_day_per_person',
+                    'Average_days_of_employment_provided_per_Household',
+                    'Total_Exp',
+                    'Wages',
+                    'Total_Households_Worked',
+                    'Total_Individuals_Worked',
+                    'Women_Persondays',
+                    'percent_of_NRM_Expenditure',
+                    'percentage_payments_gererated_within_15_days'
+                ];
+
+                // Header translations for better display
+                const headerTranslations = {
+                    'month': 'Month',
+                    'district_name': 'District',
+                    'Approved_Labour_Budget': 'Labour Budget',
+                    'Average_Wage_rate_per_day_per_person': 'Avg. Wage Rate/Day',
+                    'Average_days_of_employment_provided_per_Household': 'Avg. Days/Household',
+                    'Total_Exp': 'Total Expenditure',
+                    'Wages': 'Wages Paid',
+                    'Total_Households_Worked': 'Total Households',
+                    'Total_Individuals_Worked': 'Total Individuals',
+                    'Women_Persondays': 'Women Persondays',
+                    'percent_of_NRM_Expenditure': 'NRM Expenditure %',
+                    'percentage_payments_gererated_within_15_days': '15-Day Payments %'
+                };
+
+                table.innerHTML = `
+                    <thead class="table-dark">
+                        <tr>
+                            ${displayHeaders.map(h => `<th>${headerTranslations[h] || h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.records.map(record => `
+                            <tr>
+                                ${displayHeaders.map(h => {
+                                    const value = record[h];
+                                    if (h === 'district_name' || h === 'month') {
+                                        return `<td>${value || '-'}</td>`;
+                                    } else if (h === 'percent_of_NRM_Expenditure' || h === 'percentage_payments_gererated_within_15_days') {
+                                        return `<td class="text-end">${value ? value + '%' : '-'}</td>`;
+                                    } else if (h === 'Average_Wage_rate_per_day_per_person') {
+                                        return `<td class="text-end">₹${value ? parseFloat(value).toFixed(2) : '-'}</td>`;
+                                    } else if (h === 'Average_days_of_employment_provided_per_Household') {
+                                        return `<td class="text-end">${value ? parseFloat(value).toFixed(1) : '-'}</td>`;
+                                    } else if (h === 'Total_Exp' || h === 'Wages' || h === 'Approved_Labour_Budget') {
+                                        return `<td class="text-end">₹${value ? parseFloat(value).toLocaleString() : '-'}</td>`;
+                                    } else {
+                                        return `<td class="text-end">${value ? parseFloat(value).toLocaleString() : '-'}</td>`;
+                                    }
+                                }).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+
+                resultsDiv.innerHTML = summaryHTML;
+                resultsDiv.appendChild(table);
+
+                // Add speak button to read summary for low-literacy users
+                const speakBtn = document.createElement('button');
+                speakBtn.className = 'btn btn-outline-secondary mt-2';
+                speakBtn.textContent = localStorage.getItem('language') === 'en' ? 'Read summary' : 'सारांश सुनें';
+                speakBtn.onclick = () => speakSummary({ totalRecords, totalExp, totalHouseholds, avgWageRate });
+                resultsDiv.insertBefore(speakBtn, table);
+            } else {
+                resultsDiv.innerHTML = '<div class="alert alert-warning">No results found</div>';
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                displayHistory(data);
+            } catch (err) {
+                console.error('Error loading history:', err);
+            }
+        }
+
+        function displayHistory(history) {
+            const historyDiv = document.getElementById('historyTable');
+            if (!history || history.length === 0) {
+                historyDiv.innerHTML = '<div class="alert alert-info">No search history found</div>';
+                return;
+            }
+
+            historyDiv.innerHTML = `
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>State</th>
+                            <th>Financial Year</th>
+                            <th>Limit</th>
+                            <th>Offset</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${history.map(h => `
+                            <tr>
+                                <td>${h.state_name || '-'}</td>
+                                <td>${h.fin_year || '-'}</td>
+                                <td>${h.limit_value}</td>
+                                <td>${h.offset_value}</td>
+                                <td class="history-date">${new Date(h.created_at).toLocaleString()}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick='rerunSearch(${JSON.stringify(h)})'>
+                                        Re-run Search
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function rerunSearch(params) {
+            document.getElementById('state').value = params.state_name || '';
+            document.getElementById('year').value = params.fin_year || '';
+            document.getElementById('limit').value = params.limit_value;
+            document.getElementById('offset').value = params.offset_value;
+            showTab('search');
+            document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+        
+        // --- Accessibility helpers: language switch and speech ---
+        function switchLanguage() {
+            const lang = document.getElementById('langSelect').value;
+            localStorage.setItem('language', lang);
+            document.querySelectorAll('.hi').forEach(el => el.style.display = lang === 'hi' ? '' : 'none');
+            document.querySelectorAll('.en').forEach(el => el.style.display = lang === 'en' ? '' : 'none');
+        }
+
+        // Read an instruction for the search form (simple TTS)
+        function speakHelp() {
+            const lang = localStorage.getItem('language') || 'hi';
+            const msg = lang === 'en' ? 
+                'Select state and district, choose the financial year, then press search.' :
+                'राज्य और जिला चुनें, वित्तीय वर्ष चुनें, फिर खोजें दबाएँ।';
+            const ut = new SpeechSynthesisUtterance(msg);
+            ut.lang = lang === 'en' ? 'en-US' : 'hi-IN';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(ut);
+        }
+
+        function speakSummary({ totalRecords, totalExp, totalHouseholds, avgWageRate }) {
+            const lang = localStorage.getItem('language') || 'hi';
+            let msg = '';
+            if (lang === 'en') {
+                msg = `Found ${totalRecords} districts. Total expenditure ${totalExp} rupees. Total households ${totalHouseholds}. Average wage per day ${avgWageRate} rupees.`;
+            } else {
+                msg = `${totalRecords} जिले मिले। कुल खर्च ${totalExp} रुपये। कुल घरेलू परिवार ${totalHouseholds}। औसत मजदूरी प्रतिदिन ${avgWageRate} रुपये।`;
+            }
+            const ut = new SpeechSynthesisUtterance(msg);
+            ut.lang = lang === 'en' ? 'en-US' : 'hi-IN';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(ut);
+        }
+
+        // Initialize language UI
+        (function(){
+            const saved = localStorage.getItem('language') || 'hi';
+            document.getElementById('langSelect').value = saved;
+            switchLanguage();
+        })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
