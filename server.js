@@ -115,7 +115,6 @@ function buildTargetUrl(params) {
   }
   
   const url = `${API_BASE}?${urlParams.toString()}`;
-  console.log('Generated URL:', url);
   return url;
 }
 
@@ -261,7 +260,6 @@ app.post('/api/data', async (req, res) => {
     }
 
     const apiUrl = buildTargetUrl(params);
-    console.debug('Fetching from API:', apiUrl);
 
     const r = await fetch(apiUrl);
     if (!r.ok) {
@@ -483,5 +481,5 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
-  console.log(`branch : rmlimit`);
+  
 });
