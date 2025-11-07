@@ -115,17 +115,7 @@
                 </div>
 
                 <div class="row g-3 mt-3">
-                    <div class="col-md-4">
-                        <label class="form-label hi">सीमित परिणाम</label>
-                        <label class="form-label en" style="display:none;">Limit</label>
-                        <input type="number" class="form-control form-control-lg" id="limit" value="10" min="1" max="100">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label hi">शुरू करें (ऑफ़सेट)</label>
-                        <label class="form-label en" style="display:none;">Offset</label>
-                        <input type="number" class="form-control form-control-lg" id="offset" value="0" min="0">
-                    </div>
-                    <div class="col-md-4 text-center">
+                    <div class="col-md-12 text-center">
                         <button type="submit" class="btn" style="background:var(--primary);color:#fff;" aria-label="Search">
                             <img src="https://cdn-icons-png.flaticon.com/512/622/622669.png" style="width:22px;vertical-align:middle;margin-right:8px;"> 
                             <span class="hi">खोजें</span>
@@ -233,13 +223,11 @@
                 const state = document.getElementById('state').value;
                 const district = document.getElementById('district').value;
                 const year = document.getElementById('year').value;
-                const limit = document.getElementById('limit').value;
-                const offset = document.getElementById('offset').value;
 
-                // Format parameters as expected by the API
+                // Format parameters as expected by the API with fixed limit and offset
                 const searchParamsFormatted = {
-                    offset: parseInt(offset) || 0,
-                    limit: parseInt(limit) || 10,
+                    offset: 0,
+                    limit: 20000, // Fixed large limit to get all records
                     state_name: state.toUpperCase(),
                     fin_year: year,
                     filters: {
@@ -352,6 +340,17 @@
                     'percentage_payments_gererated_within_15_days': '15-Day Payments %'
                 };
 
+                // Add download button above table
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn btn-success mb-3';
+                downloadBtn.innerHTML = `<span class="hi">सभी रिकॉर्ड डाउनलोड करें (${data.records.length})</span><span class="en" style="display:none;">Download All Records (${data.records.length})</span>`;
+                downloadBtn.onclick = () => downloadRecords(data.records, displayHeaders, headerTranslations);
+
+                const recordCountMsg = document.createElement('div');
+                recordCountMsg.className = 'alert alert-info mb-3';
+                recordCountMsg.innerHTML = `<span class="hi">कुल ${data.records.length} रिकॉर्ड मिले। पहले 10 रिकॉर्ड दिखाए जा रहे हैं।</span><span class="en" style="display:none;">Found ${data.records.length} records. Showing first 10 records.</span>`;
+
+                // Show only first 10 records in table
                 table.innerHTML = `
                     <thead class="table-dark">
                         <tr>
@@ -359,7 +358,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.records.map(record => `
+                        ${data.records.slice(0, 10).map(record => `
                             <tr>
                                 ${displayHeaders.map(h => {
                                     const value = record[h];
@@ -383,6 +382,8 @@
                 `;
 
                 resultsDiv.innerHTML = summaryHTML;
+                resultsDiv.appendChild(downloadBtn);
+                resultsDiv.appendChild(recordCountMsg);
                 resultsDiv.appendChild(table);
 
                 // Add speak button to read summary for low-literacy users
@@ -390,7 +391,10 @@
                 speakBtn.className = 'btn btn-outline-secondary mt-2';
                 speakBtn.textContent = localStorage.getItem('language') === 'en' ? 'Read summary' : 'सारांश सुनें';
                 speakBtn.onclick = () => speakSummary({ totalRecords, totalExp, totalHouseholds, avgWageRate });
-                resultsDiv.insertBefore(speakBtn, table);
+                resultsDiv.insertBefore(speakBtn, downloadBtn);
+
+                // Reset language display after DOM updates
+                switchLanguage();
             } else {
                 resultsDiv.innerHTML = '<div class="alert alert-warning">No results found</div>';
             }
@@ -496,6 +500,34 @@
             ut.lang = lang === 'en' ? 'en-US' : 'hi-IN';
             speechSynthesis.cancel();
             speechSynthesis.speak(ut);
+        }
+
+        // Function to download records as CSV
+        function downloadRecords(records, headers, translations) {
+            // Create CSV content
+            const csvContent = [
+                // Header row
+                headers.map(h => translations[h] || h).join(','),
+                // Data rows
+                ...records.map(record => 
+                    headers.map(h => {
+                        const value = record[h];
+                        if (typeof value === 'string' && value.includes(',')) {
+                            return `"${value}"`;
+                        }
+                        return value || '';
+                    }).join(',')
+                )
+            ].join('\n');
+
+            // Create and trigger download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `mgnrega_data_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Initialize language UI

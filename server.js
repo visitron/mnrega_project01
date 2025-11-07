@@ -145,6 +145,7 @@ function getUserIdFromReq(req) {
 }
 
 app.get('/api/data', async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!API_KEY) {
       return res.status(500).json({ error: 'API key not configured on server. Create a .env with API_KEY.' });
@@ -158,10 +159,10 @@ app.get('/api/data', async (req, res) => {
     const state_name = req.query['filters[state_name]'] || req.query.state_name || req.query.state || '';
     const fin_year = req.query['filters[fin_year]'] || req.query.fin_year || '';
 
-    // If user is authenticated and limit <= 100, try returning cached result
+    // If user is authenticated, try returning cached result
     const userId = getUserIdFromReq(req);
     console.debug('GET /api/data - userId:', userId, 'limit:', limit);
-    if (db && userId && limit && Number(limit) <= 100) {
+    if (db && userId && limit) {
       try {
         console.debug('Checking cache for:', { userId, state_name, fin_year, offset, limit });
         const cached = await db.query(
@@ -192,12 +193,13 @@ app.get('/api/data', async (req, res) => {
     const j = await r.json();
 
     // Store in cache if applicable (authenticated user and limit <= 100)
-    if (db && userId && limit && Number(limit) <= 100) {
+    const limitNum = Number(limit) || 0;
+    if (db && userId && limitNum > 0 && limitNum <= 100) {
       try {
-        console.debug('Storing in cache for user:', userId);
+        console.debug('Storing in cache for user:', userId, 'with limit:', limitNum);
         await db.query(
           `INSERT INTO query_cache (user_id, state_name, fin_year, offset_value, limit_value, response) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [userId, state_name || null, fin_year || null, Number(offset) || 0, Number(limit) || 0, j]
+          [userId, state_name || null, fin_year || null, Number(offset) || 0, limitNum, j]
         );
         console.debug('Successfully stored in cache');
       } catch (err) {
@@ -206,6 +208,7 @@ app.get('/api/data', async (req, res) => {
     }
 
     // Forward the response as-is
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json(j);
   } catch (err) {
     console.error('Error in /api/data', err);
@@ -215,12 +218,14 @@ app.get('/api/data', async (req, res) => {
 
 // POST proxy - reads parameters from JSON body (preferred)
 app.post('/api/data', async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!API_KEY) {
       return res.status(500).json({ error: 'API key not configured on server. Create a .env with API_KEY.' });
     }
 
     console.log('Received request body:', req.body);
+    console.log('Request started at:', new Date(startTime).toISOString());
 
     // Parse and validate request parameters
     const params = {
@@ -232,11 +237,11 @@ app.post('/api/data', async (req, res) => {
 
     console.log('Parsed parameters:', params);
 
-    // If user is authenticated and limit <= 100, try returning cached result
+    // If user is authenticated, try returning cached result
     const userId = getUserIdFromReq(req);
     console.debug('POST /api/data - userId:', userId, 'limit:', params.limit);
 
-    if (db && userId && params.limit && Number(params.limit) <= 100) {
+    if (db && userId && params.limit) {
       try {
         console.debug('Checking cache for:', { userId, ...params });
         const cached = await db.query(
@@ -264,16 +269,17 @@ app.post('/api/data', async (req, res) => {
       console.error('API Error:', text);
       return res.status(r.status).json({ error: `Upstream error: ${r.status}`, details: text });
     }
-    
+
     const j = await r.json();
 
     // Store in cache if applicable (authenticated user and limit <= 100)
-    if (db && userId && params.limit && Number(params.limit) <= 100) {
+    const limitNum = Number(params.limit) || 0;
+    if (db && userId && limitNum > 0 && limitNum <= 100) {
       try {
-        console.debug('Storing in cache for user:', userId);
+        console.debug('Storing in cache for user:', userId, 'with limit:', limitNum);
         await db.query(
           `INSERT INTO query_cache (user_id, state_name, fin_year, offset_value, limit_value, response) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [userId, params.state_name || null, params.fin_year || null, Number(params.offset) || 0, Number(params.limit) || 0, j]
+          [userId, params.state_name || null, params.fin_year || null, Number(params.offset) || 0, limitNum, j]
         );
         console.debug('Successfully stored in cache');
       } catch (err) {
@@ -282,6 +288,7 @@ app.post('/api/data', async (req, res) => {
     }
 
     console.log('Sending response with record count:', j.records?.length || 0);
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json(j);
   } catch (err) {
     console.error('Error in POST /api/data', err);
@@ -292,6 +299,7 @@ app.post('/api/data', async (req, res) => {
 // --- Authentication endpoints ---
 // Register: { name, email, password }
 app.post('/auth/register', async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!db) return res.status(500).json({ error: 'Database not configured' });
     const { name, email, password } = req.body || {};
@@ -306,6 +314,7 @@ app.post('/auth/register', async (req, res) => {
     const user = insert.rows[0];
     // create token
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json({ user: { id: user.id, email: user.email, name: user.name }, token });
   } catch (err) {
     console.error('Error in /auth/register', err);
@@ -315,6 +324,7 @@ app.post('/auth/register', async (req, res) => {
 
 // Login: { email, password }
 app.post('/auth/login', async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!db) return res.status(500).json({ error: 'Database not configured' });
     const { email, password } = req.body || {};
@@ -326,6 +336,7 @@ app.post('/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json({ user: { id: user.id, email: user.email, name: user.name }, token });
   } catch (err) {
     console.error('Error in /auth/login', err);
@@ -335,6 +346,7 @@ app.post('/auth/login', async (req, res) => {
 
 // Get query history for the authenticated user
 app.get('/api/history', async (req, res) => {
+  const startTime = Date.now();
   try {
     const userId = getUserIdFromReq(req);
     if (!userId) {
@@ -342,22 +354,23 @@ app.get('/api/history', async (req, res) => {
     }
 
     const query = `
-      SELECT 
-        id, 
-        state_name, 
-        fin_year, 
-        offset_value, 
-        limit_value, 
+      SELECT
+        id,
+        state_name,
+        fin_year,
+        offset_value,
+        limit_value,
         created_at,
         hits,
         last_used
-      FROM query_cache 
-      WHERE user_id = $1 
-      ORDER BY last_used DESC 
+      FROM query_cache
+      WHERE user_id = $1
+      ORDER BY last_used DESC
       LIMIT 100
     `;
-    
+
     const result = await db.query(query, [userId]);
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json(result.rows);
   } catch (err) {
     console.error('Error in /api/history', err);
@@ -367,6 +380,7 @@ app.get('/api/history', async (req, res) => {
 
 // Get current user info from Bearer token
 app.get('/auth/me', async (req, res) => {
+  const startTime = Date.now();
   try {
     const auth = req.headers.authorization;
     if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
@@ -375,6 +389,7 @@ app.get('/auth/me', async (req, res) => {
     if (!db) return res.status(500).json({ error: 'Database not configured' });
     const q = await db.query('SELECT id,email,name,created_at FROM users WHERE id=$1', [decoded.userId]);
     if (q.rowCount === 0) return res.status(404).json({ error: 'User not found' });
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json({ user: q.rows[0] });
   } catch (err) {
     console.error('Error in /auth/me', err);
@@ -405,6 +420,7 @@ app.get('/api/performance', (req, res) => {
 
 // Endpoint to get all available states
 app.get('/api/states', async (req, res) => {
+  const startTime = Date.now();
   try {
     // Fetch initial data to get states
     const response = await fetch(`${API_BASE}?api-key=${API_KEY}&format=json&limit=1000`);
@@ -424,6 +440,7 @@ app.get('/api/states', async (req, res) => {
       .sort()
     )];
 
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json({ states });
   } catch (err) {
     console.error('Error fetching states:', err);
@@ -433,10 +450,11 @@ app.get('/api/states', async (req, res) => {
 
 // Endpoint to get districts for a state
 app.get('/api/districts/:state', async (req, res) => {
+  const startTime = Date.now();
   try {
     const state = req.params.state;
     const response = await fetch(`${API_BASE}?api-key=${API_KEY}&format=json&limit=1000&filters[state_name]=${encodeURIComponent(state)}`);
-    
+
     if (!response.ok) {
       return res.status(response.status).json({ error: 'Failed to fetch districts' });
     }
@@ -453,6 +471,7 @@ app.get('/api/districts/:state', async (req, res) => {
       .sort()
     )];
 
+    console.log(`Response time for ${req.method} ${req.path}: ${Date.now() - startTime}ms`);
     res.json({ districts });
   } catch (err) {
     console.error('Error fetching districts:', err);
@@ -464,4 +483,5 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
+  console.log(`branch : rmlimit`);
 });
